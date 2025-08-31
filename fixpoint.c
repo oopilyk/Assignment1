@@ -52,25 +52,36 @@ result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   result->whole = left->whole + right->whole;
   result->frac = left->frac + right->frac;
-  if (result->whole < left->whole + right->whole) {
-
-  }
-  // TODO: implement Still working on ts!
+  result->negative = left->negative || right->negative;
+  return RESULT_OK;
 }
 
 result_t
 fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  // TODO: implement
+  result->whole = left->whole - right->whole;
+  result->frac = left->frac - right->frac;
+  result->negative = left->negative || right->negative;
+  return RESULT_OK;
 }
 
 result_t
 fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  // TODO: implement
+  result->whole = left->whole * right->whole;
+  result->frac = left->frac * right->frac;
+  result->negative = left->negative || right->negative;
+  return RESULT_OK;
 }
 
 int
 fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
-  // TODO: implement
+  if (left->whole < right->whole) {
+    return -1;
+  } else if (left->whole > right->whole) {
+    return 1;
+  } else if (left->frac < right->frac) {
+    return -1;
+  }
+  return 0;
 }
 
 void
