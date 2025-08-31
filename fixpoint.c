@@ -43,7 +43,13 @@ fixpoint_is_negative( const fixpoint_t *val ) {
 
 void
 fixpoint_negate( fixpoint_t *val ) {
-  // TODO: implement
+  // Special case: zero should never be negative
+  if (val->whole == 0 && val->frac == 0) {
+    val->negative = false;
+  } else {
+    // For non-zero values, flip the sign
+    val->negative = !val->negative;
+  }
 }
 
 result_t
