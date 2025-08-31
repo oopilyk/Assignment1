@@ -20,25 +20,21 @@ fixpoint_init( fixpoint_t *val, uint32_t whole, uint32_t frac, bool negative ) {
   val->whole = whole;
   val->frac = frac;
   val->negative = negative;
-  // TODO: implement
 }
 
 uint32_t
 fixpoint_get_whole( const fixpoint_t *val ) {
   return val->whole;
-  // TODO: implement
 }
 
 uint32_t
 fixpoint_get_frac( const fixpoint_t *val ) {
   return val->frac;
-  // TODO: implement
 }
 
 bool
 fixpoint_is_negative( const fixpoint_t *val ) {
   return val->negative;
-  // TODO: implement
 }
 
 void
@@ -54,7 +50,12 @@ fixpoint_negate( fixpoint_t *val ) {
 
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  // TODO: implement
+  result->whole = left->whole + right->whole;
+  result->frac = left->frac + right->frac;
+  if (result->whole < left->whole + right->whole) {
+
+  }
+  // TODO: implement Still working on ts!
 }
 
 result_t
