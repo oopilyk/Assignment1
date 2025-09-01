@@ -48,11 +48,18 @@ fixpoint_negate( fixpoint_t *val ) {
   }
 }
 
+//need more clarification here, passes the tests for now not sure it fully works tho
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   result->whole = left->whole + right->whole;
   result->frac = left->frac + right->frac;
   result->negative = left->negative || right->negative;
+  //if overflow occurs
+  if (result->whole < left->whole || result->whole < right->whole)
+    return RESULT_OVERFLOW;
+  if (result->frac < left->frac || result->frac < right->frac)
+    return RESULT_OVERFLOW;
+
   return RESULT_OK;
 }
 
