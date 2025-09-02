@@ -48,7 +48,6 @@ fixpoint_negate( fixpoint_t *val ) {
   }
 }
 
-//for if signs differ taking into account fractions still wrong
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   //if signs differ
@@ -56,22 +55,44 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     //if left greater than right
     if (left->whole > right->whole) {
       result->whole = left->whole - right->whole;
+      //handle fraction subtraction when right fraction greater than left
+      if (right->frac > left->frac) {
+        result->whole -=1;
+        result->frac = right->frac - left->frac;
+      } else {
+        result->frac = left->frac - right->frac;
+      }
+      result->negative = left->negative;
+      //if right greater than left
+    } else if (right->whole > left->whole){
+      result->whole = right->whole - left->whole;
+      if (left->frac > right->frac) {
+        result->whole -=1;
+        result->frac = left->frac - right->frac;
+      } else {
+        result->frac = right->frac - left->frac;
+      }
+      result->negative = right->negative;
+      //if wholes are same and left frac greater than right frac
+    } else if (left->frac > right->frac) {
+      result->whole = 0;
       result->frac = left->frac - right->frac;
       result->negative = left->negative;
-      //cannot be same since signs differ, so if right greater than left
-    } else {
-      result->whole = right->whole - left->whole;
+      //same wholes right frac greater than left
+    } else if (right->frac > left->frac) {
+      result->whole = 0;
       result->frac = right->frac - left->frac;
       result->negative = right->negative;
     }
+    //if signs are the same
+  } else {
+    result->whole = left->whole + right->whole;
+    result->frac = left->frac + right->frac;
+    result->negative = left->negative;
+    //if overflow in the fraction occurs, add one to the whole
+    if (result->frac < left->frac || result->frac < right->frac)
+      result->whole += 1;
   }
-  result->whole = left->whole + right->whole;
-  result->frac = left->frac + right->frac;
-  result->negative = left->negative;
-  //if overflow in the fraction occurs, add one to the whole
-  if (result->frac < left->frac || result->frac < right->frac)
-    result->whole += 1;
-
   //if overflow occurs
   if (result->whole < left->whole || result->whole < right->whole)
     return RESULT_OVERFLOW;
