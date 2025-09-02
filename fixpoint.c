@@ -48,18 +48,33 @@ fixpoint_negate( fixpoint_t *val ) {
   }
 }
 
-//need more clarification here, passes the tests for now not sure it fully works tho
+//for if signs differ taking into account fractions still wrong
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  //if signs differ
+  if (left->negative ^ right->negative) {
+    //if left greater than right
+    if (left->whole > right->whole) {
+      result->whole = left->whole - right->whole;
+      result->frac = left->frac - right->frac;
+      result->negative = left->negative;
+      //cannot be same since signs differ, so if right greater than left
+    } else {
+      result->whole = right->whole - left->whole;
+      result->frac = right->frac - left->frac;
+      result->negative = right->negative;
+    }
+  }
   result->whole = left->whole + right->whole;
   result->frac = left->frac + right->frac;
-  result->negative = left->negative || right->negative;
+  result->negative = left->negative;
+  //if overflow in the fraction occurs, add one to the whole
+  if (result->frac < left->frac || result->frac < right->frac)
+    result->whole += 1;
+
   //if overflow occurs
   if (result->whole < left->whole || result->whole < right->whole)
     return RESULT_OVERFLOW;
-  if (result->frac < left->frac || result->frac < right->frac)
-    return RESULT_OVERFLOW;
-
   return RESULT_OK;
 }
 
@@ -81,14 +96,28 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
 int
 fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
-  if (left->whole < right->whole) {
-    return -1;
-  } else if (left->whole > right->whole) {
-    return 1;
-  } else if (left->frac < right->frac) {
-    return -1;
+  //if differing signs the negative is smallest
+  if (left->negative ^ right->negative) {
+    if (left->negative) return -1;
+    if (right->negative) return 1;
   }
-  return 0;
+  int toReturn = 0;
+  //sets return value for if both are positive
+  if (left->whole < right->whole) {
+    toReturn = -1;
+  } else if (left->whole > right->whole) {
+    toReturn = 1;
+  } else if (left->frac < right->frac) {
+    toReturn = -1;
+  } else if (left->frac > right->frac) {
+    toReturn = 1;
+  }
+  //if same returns 0
+  if(!toReturn) return toReturn;
+  //if both positive, return regular
+  return toReturn;
+    //if both are negative returns opposite
+  if(left->negative) return toReturn *-1;
 }
 
 void
