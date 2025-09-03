@@ -143,10 +143,40 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
 
 void
 fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
-  // TODO: implement
+  char whole_str[16];  // Buffer for whole part
+  char frac_str[16];   // Buffer for fractional part
+  
+  // Convert whole part to hex (remove leading zeros, keep at least 1)
+  if (val->whole == 0) {
+    strcpy(whole_str, "0");
+  } else {
+    sprintf(whole_str, "%x", val->whole);  // lowercase hex, no leading zeros
+  }
+  
+  // Convert fractional part to hex (remove trailing zeros, keep at least 1)
+  if (val->frac == 0) {
+    strcpy(frac_str, "0");
+  } else {
+    sprintf(frac_str, "%08x", val->frac);  // 8 digits with leading zeros
+    
+    // Remove trailing zeros from fractional part
+    int len = strlen(frac_str);
+    while (len > 1 && frac_str[len - 1] == '0') {
+      frac_str[len - 1] = '\0';
+      len--;
+    }
+  }
+  
+  // Combine the parts with optional minus sign
+  if (val->negative) {
+    sprintf(s->str, "-%s.%s", whole_str, frac_str);
+  } else {
+    sprintf(s->str, "%s.%s", whole_str, frac_str);
+  }
 }
 
 bool
 fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   // TODO: implement
+  return false;
 }
