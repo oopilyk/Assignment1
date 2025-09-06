@@ -50,27 +50,49 @@ fixpoint_negate( fixpoint_t *val ) {
 
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  //if opposite signs, negates the negative one and calls sub
+  //if signs differ
   if (left->negative ^ right->negative) {
-    if(left->negative) {
-      fixpoint_t newLeft = *left;
-      fixpoint_negate(&newLeft);
-      return(fixpoint_sub(result, &newLeft, right));
+    //if left greater than right
+    if (left->whole > right->whole) {
+      result->whole = left->whole - right->whole;
+      //handle fraction subtraction when right fraction greater than left
+      if (right->frac > left->frac) {
+        result->whole -=1;
+        result->frac = right->frac - left->frac;
+      } else {
+        result->frac = left->frac - right->frac;
+      }
+      result->negative = left->negative;
+      //if right greater than left
+    } else if (right->whole > left->whole){
+      result->whole = right->whole - left->whole;
+      if (left->frac > right->frac) {
+        result->whole -=1;
+        result->frac = left->frac - right->frac;
+      } else {
+        result->frac = right->frac - left->frac;
+      }
+      result->negative = right->negative;
+      //if wholes are same and left frac greater than right frac
+    } else if (left->frac > right->frac) {
+      result->whole = 0;
+      result->frac = left->frac - right->frac;
+      result->negative = left->negative;
+      //same wholes right frac greater than left
+    } else if (right->frac > left->frac) {
+      result->whole = 0;
+      result->frac = right->frac - left->frac;
+      result->negative = right->negative;
     }
-    if(right->negative) {
-      fixpoint_t newRight = *right;
-      fixpoint_negate(&newRight);
-      return(fixpoint_sub(result, left, &newRight));
-    }
-  }
-
-  //executes addition
-  result->whole = left->whole + right->whole;
-  result->frac = left->frac + right->frac;
-  result->negative = left->negative;
-  //if overflow in the fraction occurs, add one to the whole
-  if (result->frac < left->frac || result->frac < right->frac)
+    //if signs are the same
+  } else {
+    result->whole = left->whole + right->whole;
+    result->frac = left->frac + right->frac;
+    result->negative = left->negative;
+    //if overflow in the fraction occurs, add one to the whole
+    if (result->frac < left->frac || result->frac < right->frac)
       result->whole += 1;
+  }
   //if overflow occurs
   if (result->whole < left->whole || result->whole < right->whole)
     return RESULT_OVERFLOW;
@@ -79,62 +101,40 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
 result_t
 fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  //if opposite signs, negates the negative one and calls add
-  if (left->negative ^ right->negative) {
-    if(left->negative) {
-      fixpoint_t newLeft = *left;
-      fixpoint_negate(&newLeft);
-      return(fixpoint_add(result, &newLeft, right));
-    }
-    if(right->negative) {
-      fixpoint_t newRight = *right;
-      fixpoint_negate(&newRight);
-      return(fixpoint_add(result, &newRight, right));
-    }
-  }
-
-  //takes into account which whole is bigger and subtracts/sets negative
-  if (left->whole > right->whole) {
-    result->whole = left->whole - right->whole;
-    result->negative = left->negative;
-  }
-  else if (right->whole > left->whole) {
-    result->whole = right->whole - left->whole;
-    result->negative = !left->negative;
-  }
-  else {
-    result->whole = 0;
-    result->negative = false;
-  }
-
-  //takes into account which fraction is bigger and subtracts
-  if (left->frac > right->frac) {
-    result->frac = left->frac - right->frac;
-  }
-  else if (right->frac > left->frac) {
-    //if at 0, flips sign and goes into the negatives
-    if(result->whole == 0) {
-      result->negative = !result->negative;
-      result->frac = right->frac - left->frac;
-    }
-    //if not subtracts 1 from whole
-    else {
-      result->whole -= 1;
-      result->frac = 0xFFFFFFFF - right->frac + left->frac;
-    }
-  }
-  else {
-    result->frac = 0;
-  }
-  return RESULT_OK;
+  //can just add a negative
+  fixpoint_t neg_right = *right;
+  fixpoint_negate(&neg_right);
+  return fixpoint_add(result, left, &neg_right);
 }
 
 result_t
 fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  result->whole = left->whole * right->whole;
-  result->frac = left->frac * right->frac;
-  result->negative = left->negative || right->negative;
-  return RESULT_OK;
+  uint32_t a0 = left->frac;         // frac part of left
+  uint32_t a1 = left->whole;        // whole part of left  
+  uint32_t b0 = right->frac;        // frac part of right
+  uint32_t b1 = right->whole;       // whole part of right
+  
+  uint64_t p0 = (uint64_t)a0 * b0;  // frac * frac
+  uint64_t p1 = (uint64_t)a0 * b1;  // frac * whole
+  uint64_t p2 = (uint64_t)a1 * b0;  // whole * frac
+  uint64_t p3 = (uint64_t)a1 * b1;  // whole * whole
+  
+  uint64_t middle_sum = p1 + p2 + (p0 >> 32);
+  result->whole = (uint32_t)p3 + (uint32_t)(middle_sum >> 32);
+  result->frac = (uint32_t)middle_sum;
+  
+  //sign handling
+  result->negative = left->negative ^ right->negative;
+  if (result->whole == 0 && result->frac == 0) {
+    result->negative = false;
+  }
+  
+  // Check overflow/underflow
+  result_t ret = RESULT_OK;
+  if (p3 >> 32) ret |= RESULT_OVERFLOW;
+  if (p0 & 0xFFFFFFFF) ret |= RESULT_UNDERFLOW; 
+  
+  return ret;
 }
 
 int
@@ -165,23 +165,21 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
 
 void
 fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
-  char whole_str[16];  // Buffer for whole part
-  char frac_str[16];   // Buffer for fractional part
+  char whole_str[16];
+  char frac_str[16]; 
   
-  // Convert whole part to hex (remove leading zeros, keep at least 1)
   if (val->whole == 0) {
     strcpy(whole_str, "0");
   } else {
     sprintf(whole_str, "%x", val->whole);  // lowercase hex, no leading zeros
   }
   
-  // Convert fractional part to hex (remove trailing zeros, keep at least 1)
+
   if (val->frac == 0) {
     strcpy(frac_str, "0");
   } else {
-    sprintf(frac_str, "%08x", val->frac);  // 8 digits with leading zeros
-    
-    // Remove trailing zeros from fractional part
+    sprintf(frac_str, "%08x", val->frac);
+
     int len = strlen(frac_str);
     while (len > 1 && frac_str[len - 1] == '0') {
       frac_str[len - 1] = '\0';
@@ -189,7 +187,6 @@ fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
     }
   }
   
-  // Combine the parts with optional minus sign
   if (val->negative) {
     sprintf(s->str, "-%s.%s", whole_str, frac_str);
   } else {
@@ -199,6 +196,5 @@ fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
 
 bool
 fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
-  // TODO: implement
-  return false;
+  //idk
 }
