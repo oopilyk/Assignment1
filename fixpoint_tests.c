@@ -204,7 +204,6 @@ void test_negate( TestObjs *objs ) {
 void test_add( TestObjs *objs ) {
   // Note: don't modify the provided test functions.
   // Instead, add new test functions containing your new tests.
-
   fixpoint_t result;
 
   ASSERT( fixpoint_add( &result, &objs->zero, &objs->zero ) == RESULT_OK );

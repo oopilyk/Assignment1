@@ -50,49 +50,27 @@ fixpoint_negate( fixpoint_t *val ) {
 
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  //if signs differ
+  //if opposite signs, negates the negative one and calls sub
   if (left->negative ^ right->negative) {
-    //if left greater than right
-    if (left->whole > right->whole) {
-      result->whole = left->whole - right->whole;
-      //handle fraction subtraction when right fraction greater than left
-      if (right->frac > left->frac) {
-        result->whole -=1;
-        result->frac = right->frac - left->frac;
-      } else {
-        result->frac = left->frac - right->frac;
-      }
-      result->negative = left->negative;
-      //if right greater than left
-    } else if (right->whole > left->whole){
-      result->whole = right->whole - left->whole;
-      if (left->frac > right->frac) {
-        result->whole -=1;
-        result->frac = left->frac - right->frac;
-      } else {
-        result->frac = right->frac - left->frac;
-      }
-      result->negative = right->negative;
-      //if wholes are same and left frac greater than right frac
-    } else if (left->frac > right->frac) {
-      result->whole = 0;
-      result->frac = left->frac - right->frac;
-      result->negative = left->negative;
-      //same wholes right frac greater than left
-    } else if (right->frac > left->frac) {
-      result->whole = 0;
-      result->frac = right->frac - left->frac;
-      result->negative = right->negative;
+    if(left->negative) {
+      fixpoint_t newLeft = *left;
+      fixpoint_negate(&newLeft);
+      return(fixpoint_sub(result, &newLeft, right));
     }
-    //if signs are the same
-  } else {
-    result->whole = left->whole + right->whole;
-    result->frac = left->frac + right->frac;
-    result->negative = left->negative;
-    //if overflow in the fraction occurs, add one to the whole
-    if (result->frac < left->frac || result->frac < right->frac)
-      result->whole += 1;
+    if(right->negative) {
+      fixpoint_t newRight = *right;
+      fixpoint_negate(&newRight);
+      return(fixpoint_sub(result, left, &newRight));
+    }
   }
+
+  //executes addition
+  result->whole = left->whole + right->whole;
+  result->frac = left->frac + right->frac;
+  result->negative = left->negative;
+  //if overflow in the fraction occurs, add one to the whole
+  if (result->frac < left->frac || result->frac < right->frac)
+      result->whole += 1;
   //if overflow occurs
   if (result->whole < left->whole || result->whole < right->whole)
     return RESULT_OVERFLOW;
@@ -101,9 +79,53 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
 result_t
 fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  result->whole = left->whole - right->whole;
-  result->frac = left->frac - right->frac;
-  result->negative = left->negative || right->negative;
+  //if opposite signs, negates the negative one and calls add
+  if (left->negative ^ right->negative) {
+    if(left->negative) {
+      fixpoint_t newLeft = *left;
+      fixpoint_negate(&newLeft);
+      return(fixpoint_add(result, &newLeft, right));
+    }
+    if(right->negative) {
+      fixpoint_t newRight = *right;
+      fixpoint_negate(&newRight);
+      return(fixpoint_add(result, &newRight, right));
+    }
+  }
+
+  //takes into account which whole is bigger and subtracts/sets negative
+  if (left->whole > right->whole) {
+    result->whole = left->whole - right->whole;
+    result->negative = left->negative;
+  }
+  else if (right->whole > left->whole) {
+    result->whole = right->whole - left->whole;
+    result->negative = !left->negative;
+  }
+  else {
+    result->whole = 0;
+    result->negative = false;
+  }
+
+  //takes into account which fraction is bigger and subtracts
+  if (left->frac > right->frac) {
+    result->frac = left->frac - right->frac;
+  }
+  else if (right->frac > left->frac) {
+    //if at 0, flips sign and goes into the negatives
+    if(result->whole == 0) {
+      result->negative = !result->negative;
+      result->frac = right->frac - left->frac;
+    }
+    //if not subtracts 1 from whole
+    else {
+      result->whole -= 1;
+      result->frac = 0xFFFFFFFF - right->frac + left->frac;
+    }
+  }
+  else {
+    result->frac = 0;
+  }
   return RESULT_OK;
 }
 
