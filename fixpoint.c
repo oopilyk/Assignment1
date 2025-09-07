@@ -165,36 +165,30 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
 
 void
 fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
-  char whole_str[16];
-  char frac_str[16]; 
-  
-  if (val->whole == 0) {
-    strcpy(whole_str, "0");
-  } else {
-    sprintf(whole_str, "%x", val->whole);  // lowercase hex, no leading zeros
-  }
-  
-
-  if (val->frac == 0) {
-    strcpy(frac_str, "0");
-  } else {
-    sprintf(frac_str, "%08x", val->frac);
-
-    int len = strlen(frac_str);
-    while (len > 1 && frac_str[len - 1] == '0') {
-      frac_str[len - 1] = '\0';
-      len--;
-    }
-  }
-  
+  int cx = 0;
   if (val->negative) {
-    sprintf(s->str, "-%s.%s", whole_str, frac_str);
+    s->str[0] = '-';
+    cx = 1;
+  }
+  if(val->whole==0) {
+    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%d.", 0);
+  }
+  else {
+    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%x.", val->whole);
+  }
+  if (val->frac == 0) {
+    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%d", 0);
   } else {
-    sprintf(s->str, "%s.%s", whole_str, frac_str);
+    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%08x", val->frac);
+    while (s->str[cx - 1] == '0') {
+      s->str[cx - 1] = '\0';
+      cx--;
+    }
   }
 }
 
 bool
 fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   //idk
+  return 0;
 }
