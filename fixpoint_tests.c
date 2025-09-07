@@ -358,4 +358,5 @@ void test_parse_hex( TestObjs *objs ) {
   // your own test functions.
 }
 
-// TODO: define additional test functions
+// TODO: define additional test functions for: invalid strings to parse, overflowing when addind/subtracting negative value, lots of add/sub tests, 
+
