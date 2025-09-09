@@ -548,12 +548,17 @@ void test_parse_hex_2( TestObjs *objs ) {
   fixpoint_t val;
   
   // Test parsing invalid formats (should return false)
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("")) ); //nothing
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".")) ); //only .
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1")) );      // No decimal
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.")) );     // No frac digits
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".5")) );     // No whole digits
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.g")) );    // Invalid hex
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("z.5")) );    // Invalid hex
-  
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789ABCDEF")) ); //invalid fraction
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1003bd34542.8")) ); //invalid whole
+
+
   // Test parsing uppercase hex
   ASSERT( true == fixpoint_parse_hex(&val, FIXPOINT_STR("ABC.DEF")) );
   ASSERT( val.whole == 0xABC );
@@ -566,11 +571,6 @@ void test_parse_hex_2( TestObjs *objs ) {
   ASSERT( val.frac == 0xDEF00000 );
   ASSERT( val.negative == false );
   
-  // Test parsing long fractional part (should truncate)
-  ASSERT( true == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789ABCDEF")) );
-  ASSERT( val.whole == 1 );
-  ASSERT( val.frac == 0x12345678 );
-  ASSERT( val.negative == false );
 }
 
 void test_edge_cases( TestObjs *objs ) {

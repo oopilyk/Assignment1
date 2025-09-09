@@ -185,7 +185,8 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
   //if same returns 0
   if(!toReturn) return toReturn;
   //if both are negative returns opposite
-  if(left->negative) return toReturn * -1;
+  if(left->negative) return toReturn *-1;
+  //if both positive, return regular
   return toReturn;
 }
 
@@ -231,10 +232,24 @@ fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   }
 
   //determine validity of string, and find how many fraction digits, fail if not valid
-  while (newStr[cx++] != '.');
-  if ((cx > 10 && val->negative) || (cx > 9 && !val->negative)) return 0;
-  while (newStr[cx++] != '\0') digitsInFrac++;
-  if (digitsInFrac > 8) return 0;
+  //whole part of string
+  while (newStr[cx] != '.') {
+    char c = newStr[cx];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return 0;
+    cx++;
+  }
+  cx++;
+  if (((cx > 10 || cx < 3) && val->negative) || ((cx > 9 || cx < 2) && !val->negative)) return 0;
+
+  //fraction part of string
+  while (newStr[cx] != '\0') {
+    digitsInFrac++;
+    char c = newStr[cx];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return 0;
+    cx++;
+  }
+  if (digitsInFrac > 8 || digitsInFrac < 1) return 0;
+
 
   //add 0s to end of string
   int len = strlen(newStr);
