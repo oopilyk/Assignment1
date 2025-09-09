@@ -184,10 +184,9 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
   }
   //if same returns 0
   if(!toReturn) return toReturn;
-  //if both positive, return regular
+  //if both are negative returns opposite
+  if(left->negative) return toReturn * -1;
   return toReturn;
-    //if both are negative returns opposite
-  if(left->negative) return toReturn *-1;
 }
 
 void
