@@ -48,6 +48,7 @@ fixpoint_negate( fixpoint_t *val ) {
   }
 }
 
+//TODO: add a helper for checkstyle
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   //if opposite signs, negates the negative one and calls sub
@@ -55,10 +56,10 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     if(left->negative) {
       fixpoint_t newLeft = *left;
       fixpoint_negate(&newLeft);
-      result_t res = fixpoint_sub(result, &newLeft, right);
+      result_t to_return = fixpoint_sub(result, &newLeft, right);
       //negates if left was negative because should be neg after
       fixpoint_negate(result);
-      return res;
+      return to_return;
     }
     if(right->negative) {
       fixpoint_t newRight = *right;
@@ -72,14 +73,17 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   result->frac = left->frac + right->frac;
   result->negative = left->negative;
   //if overflow in the fraction occurs, add one to the whole
-  if (result->frac < left->frac || result->frac < right->frac)
-      result->whole += 1;
+  if (result->frac < left->frac || result->frac < right->frac) {
+    result->whole += 1;
+  }
   //if overflow occurs
-  if (result->whole < left->whole || result->whole < right->whole)
+  if (result->whole < left->whole || result->whole < right->whole) {
     return RESULT_OVERFLOW;
+  }
   return RESULT_OK;
 }
 
+//TODO: add a helper for checkstyle
 result_t
 fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   //if opposite signs, negates the negative one and calls add
@@ -136,16 +140,19 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
 result_t
 fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  uint32_t a0 = left->frac;         // frac part of left
-  uint32_t a1 = left->whole;        // whole part of left  
-  uint32_t b0 = right->frac;        // frac part of right
-  uint32_t b1 = right->whole;       // whole part of right
+  //gets both parts of both fixpoints
+  uint32_t a0 = left->frac;     
+  uint32_t a1 = left->whole;      
+  uint32_t b0 = right->frac;      
+  uint32_t b1 = right->whole;       
   
-  uint64_t p0 = (uint64_t)a0 * b0;  // frac * frac
-  uint64_t p1 = (uint64_t)a0 * b1;  // frac * whole
-  uint64_t p2 = (uint64_t)a1 * b0;  // whole * frac
-  uint64_t p3 = (uint64_t)a1 * b1;  // whole * whole
+  //multiplies both parts first number by both parts second and stores in 64 bit
+  uint64_t p0 = (uint64_t)a0 * b0;  
+  uint64_t p1 = (uint64_t)a0 * b1;  
+  uint64_t p2 = (uint64_t)a1 * b0;  
+  uint64_t p3 = (uint64_t)a1 * b1;  
   
+  //handles adding together the parts and truncating the bits
   uint64_t middle_sum = p1 + p2 + (p0 >> 32);
   result->whole = (uint32_t)p3 + (uint32_t)(middle_sum >> 32);
   result->frac = (uint32_t)middle_sum;
@@ -193,16 +200,16 @@ fixpoint_compare( const fixpoint_t *left, const fixpoint_t *right ) {
 void
 fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
   int cx = 0;
+  //adds - for negative
   if (val->negative) {
     s->str[0] = '-';
     cx = 1;
   }
-  if(val->whole==0) {
-    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%d.", 0);
-  }
-  else {
-    cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%x.", val->whole);
-  }
+
+  //adds hexstring and '.' for whole
+  cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%x.", val->whole);
+
+  //if just 0, adds 0 to frac, if not, adds hexstring then removes all trailing 0s
   if (val->frac == 0) {
     cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%d", 0);
   } else {
@@ -214,6 +221,7 @@ fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
   }
 }
 
+//TODO: add helper for checkstyle
 bool
 fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   //buffer for parsing making sure everything is right
@@ -235,21 +243,28 @@ fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   //whole part of string
   while (newStr[cx] != '.') {
     char c = newStr[cx];
-    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return 0;
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+      return 0;
+    }
     cx++;
   }
   cx++;
-  if (((cx > 10 || cx < 3) && val->negative) || ((cx > 9 || cx < 2) && !val->negative)) return 0;
+  if (((cx > 10 || cx < 3) && val->negative) || ((cx > 9 || cx < 2) && !val->negative)) {
+    return 0;
+  }
 
   //fraction part of string
   while (newStr[cx] != '\0') {
     digitsInFrac++;
     char c = newStr[cx];
-    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return 0;
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+      return 0;
+    }
     cx++;
   }
-  if (digitsInFrac > 8 || digitsInFrac < 1) return 0;
-
+  if (digitsInFrac > 8 || digitsInFrac < 1) {
+    return 0;
+  }
 
   //add 0s to end of string
   int len = strlen(newStr);

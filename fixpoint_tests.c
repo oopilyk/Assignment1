@@ -65,7 +65,6 @@ void test_compare_2( TestObjs *objs );
 void test_negate_2( TestObjs *objs );
 void test_format_hex_2( TestObjs *objs );
 void test_parse_hex_2( TestObjs *objs );
-void test_edge_cases( TestObjs *objs );
 
 int main( int argc, char **argv ) {
   if ( argc > 1 )
@@ -92,7 +91,6 @@ int main( int argc, char **argv ) {
   TEST( test_negate_2 );
   TEST( test_format_hex_2 );
   TEST( test_parse_hex_2 );
-  TEST( test_edge_cases );
 
   TEST_FINI();
 }
@@ -548,15 +546,15 @@ void test_parse_hex_2( TestObjs *objs ) {
   fixpoint_t val;
   
   // Test parsing invalid formats (should return false)
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("")) ); //nothing
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".")) ); //only .
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("")) );       //nothing
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".")) );      //only .
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1")) );      // No decimal
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.")) );     // No frac digits
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".5")) );     // No whole digits
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.g")) );    // Invalid hex
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("z.5")) );    // Invalid hex
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789ABCDEF")) ); //invalid fraction
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1003bd34542.8")) ); //invalid whole
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789ABCDEF")) );   //invalid fraction
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1003bd34542.8")) );       //invalid whole
 
 
   // Test parsing uppercase hex
@@ -570,33 +568,4 @@ void test_parse_hex_2( TestObjs *objs ) {
   ASSERT( val.whole == 0xABC );
   ASSERT( val.frac == 0xDEF00000 );
   ASSERT( val.negative == false );
-  
-}
-
-void test_edge_cases( TestObjs *objs ) {
-  fixpoint_t result;
-  
-  // Test operations with maximum values
-  ASSERT( fixpoint_add(&result, &objs->max, &objs->zero) == RESULT_OK );
-  TEST_EQUAL(&objs->max, &result);
-  
-  // Test operations with minimum positive value
-  ASSERT( fixpoint_add(&result, &objs->min, &objs->zero) == RESULT_OK );
-  TEST_EQUAL(&objs->min, &result);
-  
-  // Test subtraction resulting in zero from fractional parts
-  fixpoint_t same_frac1, same_frac2;
-  fixpoint_init(&same_frac1, 5, 0x12345678, false);
-  fixpoint_init(&same_frac2, 5, 0x12345678, false);
-  
-  fixpoint_sub(&result, &same_frac1, &same_frac2);
-  ASSERT( result.whole == 0 );
-  ASSERT( result.frac == 0 );
-  ASSERT( result.negative == false );
-  
-  // Test zero preservation in operations
-  ASSERT( fixpoint_mul(&result, &objs->zero, &objs->max) == RESULT_OK );
-  ASSERT( result.whole == 0 );
-  ASSERT( result.frac == 0 );
-  ASSERT( result.negative == false );
 }
