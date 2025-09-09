@@ -55,12 +55,15 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     if(left->negative) {
       fixpoint_t newLeft = *left;
       fixpoint_negate(&newLeft);
-      return(fixpoint_sub(result, &newLeft, right));
+      result_t res = fixpoint_sub(result, &newLeft, right);
+      //negates if left was negative because should be neg after
+      fixpoint_negate(result);
+      return res;
     }
     if(right->negative) {
       fixpoint_t newRight = *right;
       fixpoint_negate(&newRight);
-      return(fixpoint_sub(result, left, &newRight));
+      return fixpoint_sub(result, left, &newRight);
     }
   }
 
@@ -84,12 +87,14 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     if(left->negative) {
       fixpoint_t newLeft = *left;
       fixpoint_negate(&newLeft);
-      return(fixpoint_add(result, &newLeft, right));
+      result_t res = fixpoint_add(result, &newLeft, right);
+      fixpoint_negate(result);
+      return res;
     }
     if(right->negative) {
       fixpoint_t newRight = *right;
       fixpoint_negate(&newRight);
-      return(fixpoint_add(result, &newRight, right));
+      return fixpoint_add(result, left, &newRight);
     }
   }
 
