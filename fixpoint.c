@@ -129,7 +129,9 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     //if not subtracts 1 from whole
     else {
       result->whole -= 1;
-      result->frac = 0xFFFFFFFF - right->frac + left->frac;
+      
+      uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
+      result->frac = (uint32_t)borrowed_calc;
     }
   }
   else {
@@ -154,10 +156,7 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   
   //handles adding together the parts and truncating the bits
   uint64_t middle_sum = p1 + p2 + (p0 >> 32);
-  
-  // Check for overflow in the final whole calculation
-  uint64_t whole_calc = (uint64_t)(uint32_t)p3 + (uint64_t)(uint32_t)(middle_sum >> 32);
-  result->whole = (uint32_t)whole_calc;
+  result->whole = (uint32_t)p3 + (uint32_t)(middle_sum >> 32);
   result->frac = (uint32_t)middle_sum;
   
   //sign handling
@@ -166,10 +165,19 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     result->negative = false;
   }
   
-  // Check overflow/underflow
+  //check overflow/underflow
   result_t ret = RESULT_OK;
-  if ((p3 >> 32) || (whole_calc >> 32)) ret |= RESULT_OVERFLOW;
-  if (p0 & 0xFFFFFFFF) ret |= RESULT_UNDERFLOW; 
+  
+  //overflow
+  uint64_t final_whole = (uint64_t)(uint32_t)p3 + (uint32_t)(middle_sum >> 32);
+  if ((p3 >> 32) != 0 || (final_whole >> 32) != 0) {
+    ret |= RESULT_OVERFLOW;
+  }
+  
+  //underflow
+  if ((p0 & 0xFFFFFFFF) != 0) {
+    ret |= RESULT_UNDERFLOW;
+  } 
   
   return ret;
 }
@@ -208,7 +216,7 @@ fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
     s->str[0] = '-';
     cx = 1;
   }
-
+ 
   //adds hexstring and '.' for whole
   cx += snprintf(s->str + cx, FIXPOINT_STR_MAX_SIZE - cx, "%x.", val->whole);
 
