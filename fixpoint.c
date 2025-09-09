@@ -154,7 +154,10 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   
   //handles adding together the parts and truncating the bits
   uint64_t middle_sum = p1 + p2 + (p0 >> 32);
-  result->whole = (uint32_t)p3 + (uint32_t)(middle_sum >> 32);
+  
+  // Check for overflow in the final whole calculation
+  uint64_t whole_calc = (uint64_t)(uint32_t)p3 + (uint64_t)(uint32_t)(middle_sum >> 32);
+  result->whole = (uint32_t)whole_calc;
   result->frac = (uint32_t)middle_sum;
   
   //sign handling
@@ -165,7 +168,7 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   
   // Check overflow/underflow
   result_t ret = RESULT_OK;
-  if (p3 >> 32) ret |= RESULT_OVERFLOW;
+  if ((p3 >> 32) || (whole_calc >> 32)) ret |= RESULT_OVERFLOW;
   if (p0 & 0xFFFFFFFF) ret |= RESULT_UNDERFLOW; 
   
   return ret;
