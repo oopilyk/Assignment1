@@ -43,6 +43,8 @@ fixpoint_negate( fixpoint_t *val ) {
   // For non-zero values, flip the sign
   if (!(val->whole == 0 && val->frac == 0)) {
     val->negative = !val->negative;
+  } else {
+    val->negative = false;
   }
 }
 
@@ -132,7 +134,7 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     //if not subtracts 1 from whole
     else {
       result->whole -= 1;
-      
+      //since right is bigger
       uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
       result->frac = (uint32_t)borrowed_calc;
     }

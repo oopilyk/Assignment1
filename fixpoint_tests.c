@@ -21,6 +21,8 @@ typedef struct {
   fixpoint_t neg_min;
   fixpoint_t ten_and_quarter;
   fixpoint_t nine_and_half;
+  fixpoint_t whole_max;
+  fixpoint_t neg_whole_max;
 } TestObjs;
 
 // Functions to create and destroy the text fixture
@@ -71,6 +73,8 @@ void test_compare_2( TestObjs *objs );
 void test_negate_2( TestObjs *objs );
 void test_format_hex_2( TestObjs *objs );
 void test_parse_hex_2( TestObjs *objs );
+void test_negate_2( TestObjs *objs );
+void test_is_negative_2( TestObjs *objs );
 
 int main( int argc, char **argv ) {
   if ( argc > 1 )
@@ -90,6 +94,7 @@ int main( int argc, char **argv ) {
   TEST( test_format_hex );
   TEST( test_parse_hex );
   // Additional comprehensive tests
+  TEST( test_is_negative_2 );
   TEST( test_add_2 );
   TEST( test_sub_2 );
   TEST( test_mul_2 );
@@ -115,12 +120,14 @@ TestObjs *setup( void ) {
   TEST_FIXPOINT_INIT( &objs->neg_eleven, 11, 0, true );
 
   // TODO: initialize additional fixpoint_t instances
-  TEST_FIXPOINT_INIT(&objs->neg_one, 1, 0, true);
-  TEST_FIXPOINT_INIT(&objs->neg_two, 2, 0, true);
+  TEST_FIXPOINT_INIT( &objs->neg_one, 1, 0, true);
+  TEST_FIXPOINT_INIT( &objs->neg_two, 2, 0, true);
   TEST_FIXPOINT_INIT( &objs->neg_max, 0xFFFFFFFF, 0xFFFFFFFF, true );
   TEST_FIXPOINT_INIT( &objs->neg_min, 0, 1, true);
   TEST_FIXPOINT_INIT( &objs->ten_and_quarter, 0x0000000A, 0x40000000, false );
   TEST_FIXPOINT_INIT( &objs->nine_and_half, 0x00000009, 0x80000000, false);
+  TEST_FIXPOINT_INIT( &objs->whole_max, 0xFFFFFFFF, 0x00000000, false);
+  TEST_FIXPOINT_INIT( &objs->neg_whole_max, 0xFFFFFFFF, 0x00000000, true);
 
   return objs;
 }
@@ -384,6 +391,14 @@ void test_parse_hex( TestObjs *objs ) {
   // your own test functions.
 }
 
+void test_is_negative_2 (TestObjs *objs) {
+  fixpoint_t result;
+
+  //getting is_negative on negative 0 should be true
+  result = objs->zero;
+  result.negative = true;
+  ASSERT( fixpoint_is_negative( &result ) == true );
+}
 
 void test_add_2( TestObjs *objs ) {
   fixpoint_t result;
@@ -453,7 +468,7 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.negative == true );
 
   //test overflow when subtracting -1 from max
-  fixpoint_sub(&result, &objs->max, &objs->neg_one);
+  ASSERT( RESULT_OVERFLOW == fixpoint_sub(&result, &objs->max, &objs->neg_one));
   ASSERT( result.whole == 0 );
   ASSERT( result.frac == 0xFFFFFFFF );
   ASSERT( result.negative == false );
@@ -474,13 +489,7 @@ void test_sub_2( TestObjs *objs ) {
 
 void test_mul_2( TestObjs *objs ) {
   fixpoint_t result;
-  
-  // Test multiplication by zero
-  ASSERT( fixpoint_mul(&result, &objs->one_hundred, &objs->zero) == RESULT_OK );
-  ASSERT( result.whole == 0 );
-  ASSERT( result.frac == 0 );
-  ASSERT( result.negative == false );
-  
+    
   // Test multiplication by one
   ASSERT( fixpoint_mul(&result, &objs->one_hundred, &objs->one) == RESULT_OK );
   ASSERT( result.whole == 100 );
@@ -506,6 +515,38 @@ void test_mul_2( TestObjs *objs ) {
   ASSERT( result.whole == 22 );
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == false );
+
+  fixpoint_t highest_bit;
+  fixpoint_init(&highest_bit, 0x10000000, 0, false);
+
+  fixpoint_t neg_highest_bit;
+  fixpoint_init(&neg_highest_bit, 0x10000000, 0, true);
+
+  fixpoint_t highest_and_lowest;
+  fixpoint_init(&highest_and_lowest, 0x10000000, 1, false);
+
+  fixpoint_t neg_highest_and_lowest;
+  fixpoint_init(&neg_highest_and_lowest, 0x10000000, 1, true);
+
+  //make sure result overflow proccs and still positive
+  ASSERT( RESULT_OVERFLOW == fixpoint_mul(&result, &highest_bit, &highest_bit) );
+  ASSERT( result.negative == false );
+  ASSERT( RESULT_OVERFLOW == fixpoint_mul(&result, &objs->max, &objs->neg_two) );
+  ASSERT( result.negative == true );
+
+  //make sure result underflow proccs and still positive or negative
+  ASSERT( RESULT_UNDERFLOW == fixpoint_mul(&result, &objs->min, &objs->min) );
+  ASSERT( result.negative == false );
+  ASSERT( RESULT_UNDERFLOW == fixpoint_mul(&result, &objs->neg_min, &objs->max) );
+  ASSERT( result.negative == true );
+
+  //make sure when both overflow its both and still positive or negative
+  ASSERT( (RESULT_OVERFLOW|RESULT_UNDERFLOW) == fixpoint_mul(&result, &objs->max, &objs->max) );
+  ASSERT( result.negative == false );
+  ASSERT( (RESULT_OVERFLOW|RESULT_UNDERFLOW) == fixpoint_mul(&result, &neg_highest_and_lowest, &highest_and_lowest) );
+  ASSERT( result.negative == true );
+
+
 }
 
 void test_compare_2( TestObjs *objs ) {
