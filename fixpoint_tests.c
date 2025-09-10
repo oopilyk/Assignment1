@@ -472,6 +472,12 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == false );
   
+  //Test subtracting same negative values
+  fixpoint_sub(&result, &objs->neg_one, &objs->neg_one);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0 );
+  ASSERT( result.negative == false );
+
   // Test subtracting larger from smaller (should be negative)
   fixpoint_sub(&result, &objs->one, &objs->one_hundred);
   ASSERT( result.whole == 99 );

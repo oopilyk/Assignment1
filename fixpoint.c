@@ -143,7 +143,7 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   }
   else {
     if(result->whole == 0) {
-      result->negative = left->negative;
+      result->negative = false;
     }
     result->frac = 0;
   }
