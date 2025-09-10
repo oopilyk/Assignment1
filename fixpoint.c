@@ -90,7 +90,12 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
       fixpoint_t newLeft = *left;
       fixpoint_negate(&newLeft);
       result_t res = fixpoint_add(result, &newLeft, right);
-      fixpoint_negate(result);
+      //manually set the sign since negate won't work on zero
+      if (res == RESULT_OVERFLOW && result->whole == 0 && result->frac == 0) {
+        result->negative = true;
+      } else {
+        fixpoint_negate(result);
+      }
       return res;
     }
     if(right->negative) {
@@ -159,9 +164,6 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   
   //sign handling
   result->negative = left->negative ^ right->negative;
-  if (result->whole == 0 && result->frac == 0) {
-    result->negative = false;
-  }
   
   //check overflow/underflow
   result_t ret = RESULT_OK;
@@ -175,7 +177,11 @@ fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   //underflow
   if ((p0 & 0xFFFFFFFF) != 0) {
     ret |= RESULT_UNDERFLOW;
-  } 
+  }
+  
+  if (ret == RESULT_OK && result->whole == 0 && result->frac == 0) {
+    result->negative = false;
+  }
   
   return ret;
 }
