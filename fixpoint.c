@@ -39,11 +39,9 @@ fixpoint_is_negative( const fixpoint_t *val ) {
 
 void
 fixpoint_negate( fixpoint_t *val ) {
-  // Special case: zero should never be negative
-  if (val->whole == 0 && val->frac == 0) {
-    val->negative = false;
-  } else {
-    // For non-zero values, flip the sign
+  // Special case: zero should never be negated
+  // For non-zero values, flip the sign
+  if (!(val->whole == 0 && val->frac == 0)) {
     val->negative = !val->negative;
   }
 }
@@ -265,7 +263,7 @@ fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   }
 
   //fraction part of string
-  while (newStr[cx] != '\0') {
+  while (newStr[cx] != '\0' || digitsInFrac > 28) {
     digitsInFrac++;
     char c = newStr[cx];
     if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {

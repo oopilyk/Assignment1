@@ -15,6 +15,12 @@ typedef struct {
   fixpoint_t one_and_one_half;
   fixpoint_t one_hundred;
   fixpoint_t neg_eleven;
+  fixpoint_t neg_one;
+  fixpoint_t neg_two;
+  fixpoint_t neg_max;
+  fixpoint_t neg_min;
+  fixpoint_t ten_and_quarter;
+  fixpoint_t nine_and_half;
 } TestObjs;
 
 // Functions to create and destroy the text fixture
@@ -109,6 +115,12 @@ TestObjs *setup( void ) {
   TEST_FIXPOINT_INIT( &objs->neg_eleven, 11, 0, true );
 
   // TODO: initialize additional fixpoint_t instances
+  TEST_FIXPOINT_INIT(&objs->neg_one, 1, 0, true);
+  TEST_FIXPOINT_INIT(&objs->neg_two, 2, 0, true);
+  TEST_FIXPOINT_INIT( &objs->neg_max, 0xFFFFFFFF, 0xFFFFFFFF, true );
+  TEST_FIXPOINT_INIT( &objs->neg_min, 0, 1, true);
+  TEST_FIXPOINT_INIT( &objs->ten_and_quarter, 0x0000000A, 0x40000000, false );
+  TEST_FIXPOINT_INIT( &objs->nine_and_half, 0x00000009, 0x80000000, false);
 
   return objs;
 }
@@ -377,11 +389,7 @@ void test_add_2( TestObjs *objs ) {
   fixpoint_t result;
   
   // Test adding two negative numbers
-  fixpoint_t neg_one, neg_two;
-  fixpoint_init(&neg_one, 1, 0, true);
-  fixpoint_init(&neg_two, 2, 0, true);
-  
-  ASSERT( fixpoint_add(&result, &neg_one, &neg_two) == RESULT_OK );
+  ASSERT( fixpoint_add(&result, &objs->neg_one, &objs->neg_two) == RESULT_OK );
   ASSERT( result.whole == 3 );
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == true );
@@ -397,16 +405,18 @@ void test_add_2( TestObjs *objs ) {
   ASSERT( result.whole == 10 );
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == true );
-  
-  // Test fractional overflow
-  fixpoint_t large_frac1, large_frac2;
-  fixpoint_init(&large_frac1, 0, 0xFFFFFFFF, false);
-  fixpoint_init(&large_frac2, 0, 1, false);
-  
-  ASSERT( fixpoint_add(&result, &large_frac1, &large_frac2) == RESULT_OK );
-  ASSERT( result.whole == 1 );
-  ASSERT( result.frac == 0 );
-  ASSERT( result.negative == false );
+
+  //Test negative overflow with fraction remaining
+  fixpoint_add(&result, &objs->neg_max, &objs->neg_one);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xFFFFFFFF );
+  ASSERT( result.negative == true );
+  //make sure it works flipped
+  fixpoint_add(&result, &objs->neg_one, &objs->neg_max);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xFFFFFFFF );
+  ASSERT( result.negative == true );
+
 }
 
 void test_sub_2( TestObjs *objs ) {
@@ -435,6 +445,31 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.whole == 12 );
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == true );
+
+  //test overflow when subtracting 1 from neg max
+  fixpoint_sub(&result, &objs->neg_max, &objs->one);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xFFFFFFFF );
+  ASSERT( result.negative == true );
+
+  //test overflow when subtracting -1 from max
+  fixpoint_sub(&result, &objs->max, &objs->neg_one);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xFFFFFFFF );
+  ASSERT( result.negative == false );
+
+  //test subtracting bigger whole smaller frac
+  fixpoint_sub(&result, &objs->ten_and_quarter, &objs->nine_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xC0000000 );
+  ASSERT( result.negative == false );
+
+  //test subtracting smaller whole bigger frac
+  fixpoint_sub(&result, &objs->nine_and_half, &objs->ten_and_quarter);
+  ASSERT( result.whole == 1 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
 }
 
 void test_mul_2( TestObjs *objs ) {
@@ -498,19 +533,12 @@ void test_compare_2( TestObjs *objs ) {
 void test_negate_2( TestObjs *objs ) {
   fixpoint_t result;
   
-  // Test negating fractional values
-  result = objs->one_half;
-  fixpoint_negate(&result);
+  // Test negating negative zero (from overflow)
+  fixpoint_init(&result, 0, 0, true);
   ASSERT( result.whole == 0 );
-  ASSERT( result.frac == 0x80000000 );
+  ASSERT( result.frac == 0 );
   ASSERT( result.negative == true );
   
-  // Test negating already negative values
-  result = objs->neg_eleven;
-  fixpoint_negate(&result);
-  ASSERT( result.whole == 11 );
-  ASSERT( result.frac == 0 );
-  ASSERT( result.negative == false );
   
   // Test double negation returns to original
   result = objs->one_and_one_half;
@@ -534,11 +562,11 @@ void test_format_hex_2( TestObjs *objs ) {
   fixpoint_format_hex(&s, &neg_frac);
   ASSERT( 0 == strcmp("-0.12345678", s.str) );
   
-  // Test formatting with trailing zeros in fraction
+  // Test formatting with trailing zeros in fraction with negative
   fixpoint_t trailing_zeros;
-  fixpoint_init(&trailing_zeros, 15, 0x12340000, false);
+  fixpoint_init(&trailing_zeros, 15, 0x12340000, true);
   fixpoint_format_hex(&s, &trailing_zeros);
-  ASSERT( 0 == strcmp("f.1234", s.str) );
+  ASSERT( 0 == strcmp("-f.1234", s.str) );
 }
 
 void test_parse_hex_2( TestObjs *objs ) {
@@ -551,8 +579,8 @@ void test_parse_hex_2( TestObjs *objs ) {
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1")) );      // No decimal
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.")) );     // No frac digits
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR(".5")) );     // No whole digits
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.g")) );    // Invalid hex
-  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("z.5")) );    // Invalid hex
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.g")) );    // Invalid frac
+  ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("z.5")) );    // Invalid whole
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789ABCDEF")) );   //invalid fraction
   ASSERT( false == fixpoint_parse_hex(&val, FIXPOINT_STR("1003bd34542.8")) );       //invalid whole
 
