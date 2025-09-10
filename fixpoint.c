@@ -118,17 +118,19 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   }
   else {
     result->whole = 0;
-    result->negative = false;
   }
 
   //takes into account which fraction is bigger and subtracts
   if (left->frac > right->frac) {
     result->frac = left->frac - right->frac;
+    if(result->whole == 0) {
+      result->negative = left->negative;
+    }
   }
   else if (right->frac > left->frac) {
     //if at 0, flips sign and goes into the negatives
     if(result->whole == 0) {
-      result->negative = !result->negative;
+      result->negative = !left->negative;
       result->frac = right->frac - left->frac;
     }
     //if not subtracts 1 from whole
@@ -140,6 +142,9 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     }
   }
   else {
+    if(result->whole == 0) {
+      result->negative = left->negative;
+    }
     result->frac = 0;
   }
   return RESULT_OK;

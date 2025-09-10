@@ -20,9 +20,12 @@ typedef struct {
   fixpoint_t neg_max;
   fixpoint_t neg_min;
   fixpoint_t ten_and_quarter;
+  fixpoint_t ten_and_half;
   fixpoint_t nine_and_half;
   fixpoint_t whole_max;
   fixpoint_t neg_whole_max;
+  fixpoint_t neg_ten_and_half;
+  fixpoint_t neg_ten_and_quarter;
 } TestObjs;
 
 // Functions to create and destroy the text fixture
@@ -125,9 +128,12 @@ TestObjs *setup( void ) {
   TEST_FIXPOINT_INIT( &objs->neg_max, 0xFFFFFFFF, 0xFFFFFFFF, true );
   TEST_FIXPOINT_INIT( &objs->neg_min, 0, 1, true);
   TEST_FIXPOINT_INIT( &objs->ten_and_quarter, 0x0000000A, 0x40000000, false );
+  TEST_FIXPOINT_INIT( &objs->ten_and_half, 0x0000000A, 0x80000000, false );
   TEST_FIXPOINT_INIT( &objs->nine_and_half, 0x00000009, 0x80000000, false);
   TEST_FIXPOINT_INIT( &objs->whole_max, 0xFFFFFFFF, 0x00000000, false);
   TEST_FIXPOINT_INIT( &objs->neg_whole_max, 0xFFFFFFFF, 0x00000000, true);
+  TEST_FIXPOINT_INIT( &objs->neg_ten_and_half, 0x0000000A, 0x80000000, true );
+  TEST_FIXPOINT_INIT( &objs->neg_ten_and_quarter, 0x0000000A, 0x40000000, true );
 
   return objs;
 }
@@ -426,11 +432,34 @@ void test_add_2( TestObjs *objs ) {
   ASSERT( result.whole == 0 );
   ASSERT( result.frac == 0xFFFFFFFF );
   ASSERT( result.negative == true );
+
   //make sure it works flipped
   fixpoint_add(&result, &objs->neg_one, &objs->neg_max);
   ASSERT( result.whole == 0 );
   ASSERT( result.frac == 0xFFFFFFFF );
   ASSERT( result.negative == true );
+
+  //test when adding (subtracting, different sign) same whole and different frac that sign flips when needed
+  //and fraction part remaining is right sign (next 2 tests)
+  fixpoint_add(&result, &objs->ten_and_quarter, &objs->neg_ten_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
+  fixpoint_add(&result, &objs->ten_and_half, &objs->neg_ten_and_quarter);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == false );
+
+  fixpoint_add(&result, &objs->neg_ten_and_half, &objs->ten_and_quarter);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
+  fixpoint_add(&result, &objs->neg_ten_and_quarter, &objs->ten_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == false );
 
 }
 
@@ -484,6 +513,28 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.whole == 1 );
   ASSERT( result.frac == 0x40000000 );
   ASSERT( result.negative == true );
+
+  //test when subtracting same whole and different frac that sign flips when needed
+  //and fraction part remaining is right sign (next 2 tests)
+  fixpoint_sub(&result, &objs->ten_and_quarter, &objs->ten_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
+  fixpoint_sub(&result, &objs->ten_and_half, &objs->ten_and_quarter);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == false );
+
+  fixpoint_sub(&result, &objs->neg_ten_and_half, &objs->neg_ten_and_quarter);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
+  fixpoint_sub(&result, &objs->neg_ten_and_quarter, &objs->neg_ten_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == false );
 
 }
 
