@@ -128,12 +128,12 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
       result->frac = left->frac - right->frac;
     }
     else {
-      //right whole bigger both positive or handles calc if left whole bigger and both positive or left whole bigger both negative 
-      if((result->negative && !left->negative) || (!result->negative && !left->negative) || (result->negative && left->negative)){
+      // handles calc if left whole bigger and both positive or left whole bigger both negative 
+      if((!result->negative && !left->negative) || (result->negative && left->negative)){
         uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
         result->frac = (uint32_t)borrowed_calc;
-      //right whole bigger both negative
-      } else if ((!result->negative && left->negative)){
+      //right whole bigger both positive or right whole bigger both negative
+      } else if ((result->negative && !left->negative) || (!result->negative && left->negative)){
         result->whole -= 1;
         uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
         result->frac = (uint32_t)borrowed_calc;
