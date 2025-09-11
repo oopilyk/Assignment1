@@ -11,6 +11,102 @@
 
 // TODO: add helper functions
 
+// Helper function for left > right fraction case
+static void
+handle_left_frac_greater_case( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  if(result->whole == 0) {
+    result->negative = left->negative;
+    result->frac = left->frac - right->frac;
+  } else {
+    if((!result->negative && !left->negative) || (result->negative && left->negative)){
+      uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
+      result->frac = (uint32_t)borrowed_calc;
+    } else if ((result->negative && !left->negative) || (!result->negative && left->negative)){
+      result->whole -= 1;
+      uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
+      result->frac = (uint32_t)borrowed_calc;
+    }
+  }
+}
+
+// Helper function for right > left fraction case  
+static void
+handle_right_frac_greater_case( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  if(result->whole == 0) {
+    result->negative = !left->negative;
+    result->frac = right->frac - left->frac;
+  } else {
+    if((!result->negative && !left->negative) || (result->negative && left->negative)){
+      result->whole -= 1;
+      uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
+      result->frac = (uint32_t)borrowed_calc;
+    } else if ((result->negative && !left->negative) || (!result->negative && left->negative)){
+      uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
+      result->frac = (uint32_t)borrowed_calc;
+    }
+  }
+}
+
+// Helper function to handle subtraction fraction calculation
+static void
+handle_sub_fraction_calc( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  if (left->frac > right->frac) {
+    handle_left_frac_greater_case(result, left, right);
+  } else if (right->frac > left->frac) {
+    handle_right_frac_greater_case(result, left, right);
+  } else {
+    if(result->whole == 0) {
+      result->negative = false;
+    }
+    result->frac = 0;
+  }
+}
+
+// Helper function to check if character is valid hex
+static bool
+is_valid_hex_char( char c ) {
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+// Helper function to validate whole part of hex string
+static bool
+validate_hex_whole_part( const char *str, int *cx, bool negative ) {
+  while (str[*cx] != '.') {
+    if (!is_valid_hex_char(str[*cx])) {
+      return false;
+    }
+    (*cx)++;
+  }
+  (*cx)++;
+  if ((((*cx) > 10 || (*cx) < 3) && negative) || (((*cx) > 9 || (*cx) < 2) && !negative)) {
+    return false;
+  }
+  return true;
+}
+
+// Helper function to validate fraction part of hex string
+static bool
+validate_hex_frac_part( const char *str, int *cx, int *digitsInFrac ) {
+  while (str[*cx] != '\0' && *digitsInFrac <= 8) {
+    (*digitsInFrac)++;
+    if (!is_valid_hex_char(str[*cx])) {
+      return false;
+    }
+    (*cx)++;
+  }
+  if (*digitsInFrac > 8 || *digitsInFrac < 1) {
+    return false;
+  }
+  return true;
+}
+
+// Helper function to validate hex string format
+static bool
+validate_hex_string( const char *str, int *cx, bool negative, int *digitsInFrac ) {
+  return validate_hex_whole_part(str, cx, negative) && 
+         validate_hex_frac_part(str, cx, digitsInFrac);
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Public API functions
 ////////////////////////////////////////////////////////////////////////
@@ -120,51 +216,8 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
     result->whole = 0;
   }
 
-  //takes into account which fraction is bigger and subtracts
-  if (left->frac > right->frac) {
-    //if at 0, flips sign and goes into the negatives
-    if(result->whole == 0) {
-      result->negative = left->negative;
-      result->frac = left->frac - right->frac;
-    }
-    else {
-      // handles calc if left whole bigger and both positive or left whole bigger both negative 
-      if((!result->negative && !left->negative) || (result->negative && left->negative)){
-        uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
-        result->frac = (uint32_t)borrowed_calc;
-      //right whole bigger both positive or right whole bigger both negative
-      } else if ((result->negative && !left->negative) || (!result->negative && left->negative)){
-        result->whole -= 1;
-        uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
-        result->frac = (uint32_t)borrowed_calc;
-      }
-    }
-  }
-  else if (right->frac > left->frac) {
-    //if at 0, flips sign and goes into the negatives
-    if(result->whole == 0) {
-      result->negative = !left->negative;
-      result->frac = right->frac - left->frac;
-    }
-    else {
-      //handles calc if left whole bigger and both positive or left whole bigger both negative 
-      if((!result->negative && !left->negative) || (result->negative && left->negative)){
-        result->whole -= 1;
-        uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
-        result->frac = (uint32_t)borrowed_calc;
-      //right whole bigger both positive or right whole bigger both negative
-      } else if ((result->negative && !left->negative) || (!result->negative && left->negative)){
-        uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
-        result->frac = (uint32_t)borrowed_calc;
-      }
-    }
-  }
-  else {
-    if(result->whole == 0) {
-      result->negative = false;
-    }
-    result->frac = 0;
-  }
+  //handle fraction calculation
+  handle_sub_fraction_calc(result, left, right);
   return RESULT_OK;
 }
 
@@ -279,30 +332,8 @@ fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
     val->negative = false;
   }
 
-  //determine validity of string, and find how many fraction digits, fail if not valid
-  //whole part of string
-  while (newStr[cx] != '.') {
-    char c = newStr[cx];
-    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-      return 0;
-    }
-    cx++;
-  }
-  cx++;
-  if (((cx > 10 || cx < 3) && val->negative) || ((cx > 9 || cx < 2) && !val->negative)) {
-    return 0;
-  }
-
-  //fraction part of string
-  while (newStr[cx] != '\0' || digitsInFrac > 28) {
-    digitsInFrac++;
-    char c = newStr[cx];
-    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-      return 0;
-    }
-    cx++;
-  }
-  if (digitsInFrac > 8 || digitsInFrac < 1) {
+  //validate string format
+  if (!validate_hex_string(newStr, &cx, val->negative, &digitsInFrac)) {
     return 0;
   }
 
