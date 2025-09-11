@@ -122,9 +122,22 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
   //takes into account which fraction is bigger and subtracts
   if (left->frac > right->frac) {
-    result->frac = left->frac - right->frac;
+    //if at 0, flips sign and goes into the negatives
     if(result->whole == 0) {
       result->negative = left->negative;
+      result->frac = left->frac - right->frac;
+    }
+    else {
+      //right whole bigger both positive or handles calc if left whole bigger and both positive or left whole bigger both negative 
+      if((result->negative && !left->negative) || (!result->negative && !left->negative) || (result->negative && left->negative)){
+        uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;
+        result->frac = (uint32_t)borrowed_calc;
+      //right whole bigger both negative
+      } else if ((!result->negative && left->negative)){
+        result->whole -= 1;
+        uint64_t borrowed_calc = 0x100000000ULL + right->frac - left->frac;
+        result->frac = (uint32_t)borrowed_calc;
+      }
     }
   }
   else if (right->frac > left->frac) {
@@ -134,7 +147,7 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
       result->frac = right->frac - left->frac;
     }
     else {
-      //handles calc if left whole bigger and both positive or left whole bigger both negative
+      //handles calc if left whole bigger and both positive or left whole bigger both negative 
       if((!result->negative && !left->negative) || (result->negative && left->negative)){
         result->whole -= 1;
         uint64_t borrowed_calc = 0x100000000ULL + left->frac - right->frac;

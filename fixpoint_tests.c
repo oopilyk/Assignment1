@@ -22,7 +22,9 @@ typedef struct {
   fixpoint_t ten_and_quarter;
   fixpoint_t ten_and_half;
   fixpoint_t nine_and_half;
+  fixpoint_t neg_nine_and_half;
   fixpoint_t nine_and_quarter;
+  fixpoint_t neg_nine_and_quarter;
   fixpoint_t whole_max;
   fixpoint_t neg_whole_max;
   fixpoint_t neg_ten_and_half;
@@ -136,6 +138,9 @@ TestObjs *setup( void ) {
   TEST_FIXPOINT_INIT( &objs->neg_whole_max, 0xFFFFFFFF, 0x00000000, true);
   TEST_FIXPOINT_INIT( &objs->neg_ten_and_half, 0x0000000A, 0x80000000, true );
   TEST_FIXPOINT_INIT( &objs->neg_ten_and_quarter, 0x0000000A, 0x40000000, true );
+  TEST_FIXPOINT_INIT( &objs->neg_nine_and_half, 0x00000009, 0x80000000, true);
+  TEST_FIXPOINT_INIT( &objs->neg_nine_and_quarter, 0x00000009, 0x40000000, true);
+
 
   return objs;
 }
@@ -504,6 +509,12 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.frac == 0 );
   ASSERT( result.negative == false );
 
+  //Test subtracting one from negative max getting overflow and neg 0
+  ASSERT( RESULT_OVERFLOW == fixpoint_sub(&result, &objs->neg_whole_max, &objs->one));
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0 );
+  ASSERT( result.negative == true );
+
   // Test subtracting larger from smaller (should be negative)
   fixpoint_sub(&result, &objs->one, &objs->one_hundred);
   ASSERT( result.whole == 99 );
@@ -534,11 +545,24 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.frac == 0xFFFFFFFF );
   ASSERT( result.negative == false );
 
-  //test subtracting bigger whole smaller frac
+  //test subtracting bigger whole smaller frac 
   fixpoint_sub(&result, &objs->ten_and_quarter, &objs->nine_and_half);
   ASSERT( result.whole == 0 );
   ASSERT( result.frac == 0xC0000000 );
   ASSERT( result.negative == false );
+
+  //test subtracting bigger whole bigger frac both pos
+  fixpoint_sub(&result, &objs->ten_and_half, &objs->nine_and_quarter);
+  ASSERT( result.whole == 1 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == false );
+
+  //test subtracting bigger whole bigger frac both neg
+  fixpoint_sub(&result, &objs->neg_ten_and_half, &objs->neg_nine_and_quarter);
+  ASSERT( result.whole == 1 );
+  ASSERT( result.frac == 0x40000000 );
+  ASSERT( result.negative == true );
+
 
   //test subtracting smaller whole bigger frac
   fixpoint_sub(&result, &objs->nine_and_half, &objs->ten_and_quarter);
@@ -546,11 +570,35 @@ void test_sub_2( TestObjs *objs ) {
   ASSERT( result.frac == 0x40000000 );
   ASSERT( result.negative == true );
 
+  //test subtracting bigger whole smaller frac both neg
+  fixpoint_sub(&result, &objs->neg_ten_and_quarter, &objs->neg_nine_and_half);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xC0000000 );
+  ASSERT( result.negative == true );
+
+  //test subtracting smaller whole bigger frac both neg
+  fixpoint_sub(&result, &objs->neg_nine_and_half, &objs->neg_ten_and_quarter);
+  ASSERT( result.whole == 0 );
+  ASSERT( result.frac == 0xC0000000 );
+  ASSERT( result.negative == false );
+
   //test when both negative and right frac and whole bigger
   fixpoint_sub(&result, &objs->neg_one, &objs->neg_max);
   ASSERT( result.whole == 0xFFFFFFFE );
   ASSERT( result.frac == 0xFFFFFFFF );
   ASSERT( result.negative == false );
+
+  //test when both negative and right frac and whole bigger
+  fixpoint_sub(&result, &objs->neg_ten_and_quarter, &objs->neg_max);
+  ASSERT( result.whole == 0xFFFFFFF5 );
+  ASSERT( result.frac == 0xBFFFFFFF );
+  ASSERT( result.negative == false );
+
+  //test when both negative and left frac and whole bigger
+  fixpoint_sub(&result, &objs->neg_max, &objs->neg_ten_and_quarter);
+  ASSERT( result.whole == 0xFFFFFFF5 );
+  ASSERT( result.frac == 0xBFFFFFFF );
+  ASSERT( result.negative == true );
 
   //test subbing bigger whole bigger frac
   fixpoint_sub(&result, &objs->ten_and_half, &objs->nine_and_quarter);
