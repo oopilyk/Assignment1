@@ -12,6 +12,39 @@
 // TODO: add helper functions
 
 // Helper function for left > right fraction case
+
+static result_t 
+handle_addition( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  result->whole = left->whole + right->whole;
+  result->frac = left->frac + right->frac;
+  result->negative = left->negative;
+  //if overflow in the fraction occurs, add one to the whole
+  if (result->frac < left->frac || result->frac < right->frac) {
+    result->whole += 1;
+  }
+  //if overflow occurs
+  if (result->whole < left->whole || result->whole < right->whole) {
+    return RESULT_OVERFLOW;
+  }
+  return RESULT_OK;
+
+}
+
+static void
+handle_whole_sub_calc( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
+  if (left->whole > right->whole) {
+    result->whole = left->whole - right->whole;
+    result->negative = left->negative;
+  }
+  else if (right->whole > left->whole) {
+    result->whole = right->whole - left->whole;
+    result->negative = !left->negative;
+  }
+  else {
+    result->whole = 0;
+  }
+}
+
 static void
 handle_left_frac_greater_case( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   if(result->whole == 0) {
@@ -144,7 +177,6 @@ fixpoint_negate( fixpoint_t *val ) {
   }
 }
 
-//TODO: add a helper for checkstyle
 result_t
 fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   //if opposite signs, negates the negative one and calls sub
@@ -165,21 +197,9 @@ fixpoint_add( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   }
 
   //executes addition
-  result->whole = left->whole + right->whole;
-  result->frac = left->frac + right->frac;
-  result->negative = left->negative;
-  //if overflow in the fraction occurs, add one to the whole
-  if (result->frac < left->frac || result->frac < right->frac) {
-    result->whole += 1;
-  }
-  //if overflow occurs
-  if (result->whole < left->whole || result->whole < right->whole) {
-    return RESULT_OVERFLOW;
-  }
-  return RESULT_OK;
+  return handle_addition( result, left, right );
 }
 
-//TODO: add a helper for checkstyle
 result_t
 fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
   //if opposite signs, negates the negative one and calls add
@@ -204,17 +224,7 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
   }
 
   //takes into account which whole is bigger and subtracts/sets negative
-  if (left->whole > right->whole) {
-    result->whole = left->whole - right->whole;
-    result->negative = left->negative;
-  }
-  else if (right->whole > left->whole) {
-    result->whole = right->whole - left->whole;
-    result->negative = !left->negative;
-  }
-  else {
-    result->whole = 0;
-  }
+  handle_whole_sub_calc (result, left, right);
 
   //handle fraction calculation
   handle_sub_fraction_calc(result, left, right);
@@ -223,44 +233,37 @@ fixpoint_sub( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *righ
 
 result_t
 fixpoint_mul( fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right ) {
-  //gets both parts of both fixpoints
-  uint32_t a0 = left->frac;     
-  uint32_t a1 = left->whole;      
-  uint32_t b0 = right->frac;      
-  uint32_t b1 = right->whole;       
-  
   //multiplies both parts first number by both parts second and stores in 64 bit
-  uint64_t p0 = (uint64_t)a0 * b0;  
-  uint64_t p1 = (uint64_t)a0 * b1;  
-  uint64_t p2 = (uint64_t)a1 * b0;  
-  uint64_t p3 = (uint64_t)a1 * b1;  
-  
+  uint64_t p0 = (uint64_t)left->frac * right->frac;  
+  uint64_t p1 = (uint64_t)left->frac * right->whole;  
+  uint64_t p2 = (uint64_t)left->whole * right->frac;  
+  uint64_t p3 = (uint64_t)left->whole * right->whole;  
+
   //handles adding together the parts and truncating the bits
   uint64_t middle_sum = p1 + p2 + (p0 >> 32);
   result->whole = (uint32_t)p3 + (uint32_t)(middle_sum >> 32);
+
   result->frac = (uint32_t)middle_sum;
-  
   //sign handling
   result->negative = left->negative ^ right->negative;
-  
+
   //check overflow/underflow
   result_t ret = RESULT_OK;
-  
+
   //overflow
   uint64_t final_whole = (uint64_t)(uint32_t)p3 + (uint32_t)(middle_sum >> 32);
   if ((p3 >> 32) != 0 || (final_whole >> 32) != 0) {
     ret |= RESULT_OVERFLOW;
   }
-  
+
   //underflow
   if ((p0 & 0xFFFFFFFF) != 0) {
     ret |= RESULT_UNDERFLOW;
   }
-  
   if (ret == RESULT_OK && result->whole == 0 && result->frac == 0) {
     result->negative = false;
   }
-  
+
   return ret;
 }
 
@@ -314,7 +317,6 @@ fixpoint_format_hex( fixpoint_str_t *s, const fixpoint_t *val ) {
   }
 }
 
-//TODO: add helper for checkstyle
 bool
 fixpoint_parse_hex( fixpoint_t *val, const fixpoint_str_t *s ) {
   //buffer for parsing making sure everything is right
